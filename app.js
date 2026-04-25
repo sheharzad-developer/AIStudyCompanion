@@ -1,47 +1,46 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  KeyboardAvoidingView,
-  ListRenderItem,
-  Platform,
-  SafeAreaView,
-  StyleSheet,
+  View,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  FlatList,
+  StyleSheet,
+  SafeAreaView,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import axios from 'axios';
 
+// ============================================================================
+// CONSTANTS & CONFIGURATION
+// ============================================================================
 const API_BASE_URL = 'http://192.168.18.241:3000';
 const MESSAGE_TYPES = {
   USER: 'user',
   AI: 'ai',
-} as const;
-
-type MessageType = (typeof MESSAGE_TYPES)[keyof typeof MESSAGE_TYPES];
-
-type Message = {
-  id: string;
-  type: MessageType;
-  text: string;
-  timestamp: Date;
 };
 
-export default function HomeScreen() {
-  const [messages, setMessages] = useState<Message[]>([
+// ============================================================================
+// MAIN APP COMPONENT
+// ============================================================================
+export default function App() {
+  // State Management
+  const [messages, setMessages] = useState([
     {
       id: '0',
       type: MESSAGE_TYPES.AI,
-      text: "Hello! I'm your AI Study Companion. Ask me anything about your studies, and I'll help you learn!",
+      text: 'Hello! 👋 I\'m your AI Study Companion. Ask me anything about your studies, and I\'ll help you learn!',
       timestamp: new Date(),
     },
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const flatListRef = useRef<FlatList<Message>>(null);
+  const flatListRef = useRef(null);
 
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (flatListRef.current && messages.length > 0) {
       setTimeout(() => {
@@ -50,40 +49,50 @@ export default function HomeScreen() {
     }
   }, [messages]);
 
+  // ========================================================================
+  // SEND MESSAGE HANDLER
+  // ========================================================================
   const handleSendMessage = async () => {
+    // Validation
     if (!inputText.trim()) {
       return;
     }
 
-    const userMessage: Message = {
+    // Create user message
+    const userMessage = {
       id: Date.now().toString(),
       type: MESSAGE_TYPES.USER,
       text: inputText.trim(),
       timestamp: new Date(),
     };
 
+    // Add user message to state immediately (optimistic update)
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setInputText('');
-    setIsLoading(true);
 
+    // Fetch AI response
+    setIsLoading(true);
     try {
       const response = await axios.post(`${API_BASE_URL}/ask`, {
         question: userMessage.text,
         conversationHistory: messages,
       });
 
-      const aiMessage: Message = {
+      // Create AI message
+      const aiMessage = {
         id: (Date.now() + 1).toString(),
         type: MESSAGE_TYPES.AI,
-        text: response.data.answer || "Sorry, I couldn't process that. Please try again.",
+        text: response.data.answer || 'Sorry, I couldn\'t process that. Please try again.',
         timestamp: new Date(),
       };
 
+      // Add AI message to state
       setMessages((prevMessages) => [...prevMessages, aiMessage]);
     } catch (error) {
+      // Handle error
       console.error('API Error:', error);
 
-      const errorMessage: Message = {
+      const errorMessage = {
         id: (Date.now() + 1).toString(),
         type: MESSAGE_TYPES.AI,
         text: 'Oops! Something went wrong. Please check your connection and try again.',
@@ -96,7 +105,10 @@ export default function HomeScreen() {
     }
   };
 
-  const renderMessage: ListRenderItem<Message> = ({ item }) => {
+  // ========================================================================
+  // RENDER MESSAGE BUBBLE
+  // ========================================================================
+  const renderMessage = ({ item }) => {
     const isUserMessage = item.type === MESSAGE_TYPES.USER;
 
     return (
@@ -104,20 +116,28 @@ export default function HomeScreen() {
         style={[
           styles.messageContainer,
           isUserMessage ? styles.userMessageContainer : styles.aiMessageContainer,
-        ]}>
+        ]}
+      >
         <View
           style={[
             styles.messageBubble,
             isUserMessage ? styles.userBubble : styles.aiBubble,
-          ]}>
-          <Text style={[styles.messageText, isUserMessage ? styles.userText : styles.aiText]}>
+          ]}
+        >
+          <Text
+            style={[
+              styles.messageText,
+              isUserMessage ? styles.userText : styles.aiText,
+            ]}
+          >
             {item.text}
           </Text>
           <Text
             style={[
               styles.timestamp,
               isUserMessage ? styles.userTimestamp : styles.aiTimestamp,
-            ]}>
+            ]}
+          >
             {item.timestamp.toLocaleTimeString('en-US', {
               hour: '2-digit',
               minute: '2-digit',
@@ -129,40 +149,55 @@ export default function HomeScreen() {
     );
   };
 
+  // ========================================================================
+  // RENDER LOADING INDICATOR
+  // ========================================================================
   const renderLoadingIndicator = () => {
     if (!isLoading) return null;
 
     return (
       <View style={styles.loadingContainer}>
-        <View style={[styles.messageBubble, styles.loadingBubble]}>
+        <View style={styles.messageBubble}>
           <ActivityIndicator size="small" color="#0084FF" />
-          <Text style={[styles.messageText, styles.loadingText]}>Thinking...</Text>
+          <Text style={[styles.messageText, { marginLeft: 8 }]}>
+            Thinking...
+          </Text>
         </View>
       </View>
     );
   };
 
+  // ========================================================================
+  // MAIN RENDER
+  // ========================================================================
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoid}>
+        style={styles.keyboardAvoid}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>AI Study Companion</Text>
           <Text style={styles.headerSubtitle}>Learn anything, anytime</Text>
         </View>
 
+        {/* Chat List */}
         <FlatList
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.chatListContent}
+          scrollEnabled={true}
           showsVerticalScrollIndicator={false}
         />
 
+        {/* Loading Indicator */}
         {renderLoadingIndicator()}
 
+        {/* Input Section */}
         <View style={styles.inputSection}>
           <View style={styles.inputContainer}>
             <TextInput
@@ -181,7 +216,8 @@ export default function HomeScreen() {
                 (isLoading || !inputText.trim()) && styles.sendButtonDisabled,
               ]}
               onPress={handleSendMessage}
-              disabled={isLoading || !inputText.trim()}>
+              disabled={isLoading || !inputText.trim()}
+            >
               <Text style={styles.sendButtonText}>Send</Text>
             </TouchableOpacity>
           </View>
@@ -191,14 +227,21 @@ export default function HomeScreen() {
   );
 }
 
+// ============================================================================
+// STYLES
+// ============================================================================
 const styles = StyleSheet.create({
+  // Container
   container: {
     flex: 1,
     backgroundColor: '#FFF',
   },
+
   keyboardAvoid: {
     flex: 1,
   },
+
+  // Header
   header: {
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -206,80 +249,95 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA',
   },
+
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#000',
     marginBottom: 2,
   },
+
   headerSubtitle: {
     fontSize: 12,
     color: '#65676B',
   },
+
+  // Chat List
   chatListContent: {
     paddingHorizontal: 12,
     paddingVertical: 12,
     flexGrow: 1,
     justifyContent: 'flex-end',
   },
+
+  // Message Container
   messageContainer: {
     marginVertical: 6,
     flexDirection: 'row',
     paddingHorizontal: 4,
   },
+
   userMessageContainer: {
     justifyContent: 'flex-end',
   },
+
   aiMessageContainer: {
     justifyContent: 'flex-start',
   },
+
+  // Message Bubble
   messageBubble: {
     maxWidth: '80%',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,
   },
+
   userBubble: {
     backgroundColor: '#0084FF',
   },
+
   aiBubble: {
     backgroundColor: '#E5E5EA',
   },
+
+  // Message Text
   messageText: {
     fontSize: 15,
     lineHeight: 20,
   },
+
   userText: {
     color: '#FFF',
   },
+
   aiText: {
     color: '#000',
   },
+
+  // Timestamp
   timestamp: {
     fontSize: 11,
     marginTop: 4,
   },
+
   userTimestamp: {
     color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'right',
   },
+
   aiTimestamp: {
     color: '#65676B',
   },
+
+  // Loading
   loadingContainer: {
     paddingHorizontal: 12,
     marginVertical: 6,
     alignItems: 'flex-start',
   },
-  loadingBubble: {
-    backgroundColor: '#E5E5EA',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: '#000',
-    marginLeft: 8,
-  },
+
+  // Input Section
   inputSection: {
     paddingHorizontal: 12,
     paddingVertical: 12,
@@ -287,11 +345,13 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E5E5EA',
   },
+
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
   },
+
   textInput: {
     flex: 1,
     backgroundColor: '#F0F0F0',
@@ -304,6 +364,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E5EA',
   },
+
   sendButton: {
     width: 44,
     height: 44,
@@ -313,10 +374,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 0,
   },
+
   sendButtonDisabled: {
     backgroundColor: '#B0B0B0',
     opacity: 0.6,
   },
+
   sendButtonText: {
     color: '#FFF',
     fontWeight: '600',
