@@ -2,34 +2,55 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const axios = require('axios');
+const rateLimit = require('express-rate-limit');
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
-const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
-const CLAUDE_MODEL = 'claude-3-5-haiku-latest';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
 
-const SYSTEM_PROMPT = `You are an AI Study Companion. Follow these rules strictly:
+const SYSTEM_PROMPT = `You are an AI Study Companion for students.
 
-1. LANGUAGE: Always respond in BOTH English and Urdu
-2. FORMAT: Use this exact format:
-   - First: English explanation (simple, short - 2-3 sentences)
-   - Then: اردو میں وضاحت (Urdu explanation - 2-3 sentences)
-   - Finally: EXAMPLE (ایک مثال دیں)
+Your role:
+- Act like a friendly and supportive teacher
+- Help students understand concepts easily
 
-3. STYLE:
-   - Use simple words, avoid technical jargon
-   - Be encouraging and supportive
-   - Keep explanations SHORT but clear
-   - Make examples relatable to students
+Instructions:
+1. Explain the topic in very simple English
+2. Mix a little Urdu ONLY where it improves understanding
+3. Keep the explanation short (maximum 120-150 words)
+4. Include exactly ONE real-life example
+5. Avoid technical jargon and complex sentences
 
-4. EXAMPLE FORMAT:
-   English Example: [simple example in English]
-   اردو میں مثال: [simple example in Urdu]
+Output format (follow strictly):
 
-Remember: ALWAYS include BOTH languages and ONE example in every response.`;
+Explanation:
+<your explanation here>
+
+Example:
+<real-life example here>
+
+Question:
+Do you want a quiz on this topic?`;
+
+const MCQ_PROMPT = `Create 3 MCQs from the given topic.
+
+Rules:
+- Each question has 3 options
+- Clearly mark the correct answer
+- Keep questions simple
+- Make it suitable for beginner students
+
+Format each MCQ exactly like this:
+
+Question:
+A)
+B)
+C)
+Answer:`;
 
 function getWeatherCodeDescription(code) {
   const weatherCodes = {
@@ -120,8 +141,61 @@ English Example: If it feels hot, drink water and avoid staying in direct sunlig
 اردو میں مثال: اگر گرمی محسوس ہو تو پانی پئیں اور زیادہ دیر دھوپ میں نہ رہیں۔`;
 }
 
-if (!CLAUDE_API_KEY) {
-  console.error('ERROR: CLAUDE_API_KEY is not set in .env file');
+async function generateMcqs(topic) {
+  return askGemini(MCQ_PROMPT, `Topic: ${topic}`);
+}
+
+async function askGemini(systemPrompt, userContent) {
+  const response = await axios.post(
+    `${GEMINI_API_URL}/models/${GEMINI_MODEL}:generateContent`,
+    {
+      systemInstruction: {
+        parts: [{ text: systemPrompt }],
+      },
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: userContent }],
+        },
+      ],
+      generationConfig: {
+        maxOutputTokens: 700,
+      },
+    },
+    {
+      params: {
+        key: GEMINI_API_KEY,
+      },
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    },
+  );
+
+  const text = response.data?.candidates?.[0]?.content?.parts
+    ?.map((part) => part.text)
+    .filter(Boolean)
+    .join('\n');
+
+  return text || 'Sorry, I could not generate a response. Please try again.';
+}
+
+function getGeminiErrorMessage(error) {
+  const geminiMessage = error.response?.data?.error?.message;
+
+  if (geminiMessage?.toLowerCase().includes('api key not valid')) {
+    return 'The Gemini API key is invalid. Please check your GEMINI_API_KEY and try again.';
+  }
+
+  if (geminiMessage?.toLowerCase().includes('quota')) {
+    return 'Gemini quota is unavailable right now. Please check billing or quota in Google Cloud.';
+  }
+
+  return geminiMessage || 'Failed to get AI response';
+}
+
+if (!GEMINI_API_KEY) {
+  console.error('ERROR: GEMINI_API_KEY is not set in .env file');
   process.exit(1);
 }
 
@@ -134,6 +208,13 @@ app.use(
 );
 
 app.use(express.json({ limit: '10mb' }));
+
+const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+});
+
+app.use(['/ask', '/quiz'], aiLimiter);
 
 app.get('/', (req, res) => {
   res.json({
@@ -158,38 +239,36 @@ app.post('/ask', async (req, res) => {
       return res.json({ answer: weatherAnswer });
     }
 
-    const response = await axios.post(
-      CLAUDE_API_URL,
-      {
-        model: CLAUDE_MODEL,
-        max_tokens: 700,
-        system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: question,
-          },
-        ],
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': CLAUDE_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-      },
-    );
-
-    const answer =
-      response.data?.content?.find((item) => item.type === 'text')?.text ||
-      'Sorry, I could not generate an answer. Please try again.';
+    const answer = await askGemini(SYSTEM_PROMPT, question);
 
     return res.json({ answer });
   } catch (error) {
-    console.error('Claude API Error:', error.response?.data || error.message);
+    console.error('Gemini API Error:', error.response?.data || error.message);
 
     return res.status(500).json({
-      error: 'Failed to get AI response',
+      error: getGeminiErrorMessage(error),
+    });
+  }
+});
+
+app.post('/quiz', async (req, res) => {
+  const { topic } = req.body;
+
+  if (!topic || typeof topic !== 'string') {
+    return res.status(400).json({
+      error: 'Topic is required',
+    });
+  }
+
+  try {
+    const quiz = await generateMcqs(topic);
+
+    return res.json({ quiz });
+  } catch (error) {
+    console.error('Gemini Quiz Error:', error.response?.data || error.message);
+
+    return res.status(500).json({
+      error: getGeminiErrorMessage(error),
     });
   }
 });
@@ -197,4 +276,5 @@ app.post('/ask', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`AI Study Backend running on http://localhost:${PORT}`);
   console.log(`Ask endpoint ready at http://localhost:${PORT}/ask`);
+  console.log(`Quiz endpoint ready at http://localhost:${PORT}/quiz`);
 });

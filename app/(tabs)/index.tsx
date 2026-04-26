@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 
 const API_BASE_URL = 'http://192.168.18.241:3000';
 const MESSAGE_TYPES = {
@@ -83,10 +83,15 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('API Error:', error);
 
+      const errorText = isAxiosError(error)
+        ? error.response?.data?.error ||
+          'Could not reach the study server. Please check your connection and try again.'
+        : 'Oops! Something went wrong. Please try again.';
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: MESSAGE_TYPES.AI,
-        text: 'Oops! Something went wrong. Please check your connection and try again.',
+        text: errorText,
         timestamp: new Date(),
       };
 
