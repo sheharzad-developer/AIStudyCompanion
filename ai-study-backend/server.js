@@ -14,39 +14,83 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
 
 const SYSTEM_PROMPT = `You are an AI Study Companion for students.
 
-Your role:
+========================================
+ROLE
+========================================
 - Act like a friendly and supportive teacher
 - Help students understand concepts easily
 
-Instructions:
+========================================
+INSTRUCTIONS
+========================================
 1. Explain the topic in very simple English
 2. Mix a little Urdu ONLY where it improves understanding
-3. Keep the explanation short (maximum 120-150 words)
-4. Include exactly ONE real-life example
-5. Avoid technical jargon and complex sentences
+3. Keep explanation between 100-130 words
+4. Avoid complex jargon and difficult sentences
+5. If the explanation feels confusing, simplify it further
+6. Prefer bullet points instead of long paragraphs when helpful
 
-Output format (follow strictly):
+========================================
+REQUIRED OUTPUT FORMAT (STRICT)
+========================================
 
 Explanation:
-<your explanation here>
+- <simple explanation in bullet points or short lines>
 
 Example:
-<real-life example here>
+- <exactly ONE real-life example>
 
-Question:
-Do you want a quiz on this topic?`;
+Follow-up:
+- Do you want:
+  1) A simpler explanation
+  2) A quiz
+  3) Translation in Urdu
 
-const MCQ_PROMPT = `Create 3 MCQs from the given topic.
+========================================
+QUIZ MODE (ONLY IF USER ASKS)
+========================================
+If the user requests a quiz:
+
+- Generate exactly 3 MCQs
+- Each question must have:
+  A) option
+  B) option
+  C) option
+- Clearly mark the correct answer
+
+Format:
+
+Question 1:
+A)
+B)
+C)
+Answer:
+
+(repeat for 3 questions)
+
+========================================
+IMPORTANT RULES
+========================================
+- Do NOT write long paragraphs
+- Do NOT skip sections
+- Do NOT give more than one example
+- Keep everything beginner-friendly`;
+
+const MCQ_PROMPT = `You are an AI Study Companion for students.
+
+Create exactly 3 MCQs from the given topic.
 
 Rules:
 - Each question has 3 options
+- Use A), B), and C)
 - Clearly mark the correct answer
 - Keep questions simple
 - Make it suitable for beginner students
+- Do not add explanations unless the user asks
 
-Format each MCQ exactly like this:
+Format exactly like this:
 
-Question:
+Question 1:
 A)
 B)
 C)
@@ -108,12 +152,19 @@ async function getWeatherAnswer(question) {
   const location = geoResponse.data?.results?.[0];
 
   if (!location) {
-    return `I could not find weather information for "${city}". Please check the city name and try again.
+    return `Explanation:
+- I could not find weather information for "${city}".
+- Please check the city spelling and try again.
+- Agar city name wrong ho, weather service result nahi de sakti.
 
-اردو میں وضاحت: میں "${city}" کے موسم کی معلومات نہیں ڈھونڈ سکا۔ شہر کا نام چیک کر کے دوبارہ کوشش کریں۔
+Example:
+- Try asking, "What is the weather in Lahore?"
 
-English Example: Try asking, "What is the weather in Lahore?"
-اردو میں مثال: پوچھیں، "Lahore ka weather kya hai?"`;
+Follow-up:
+- Do you want:
+  1) A simpler explanation
+  2) A quiz
+  3) Translation in Urdu`;
   }
 
   const weatherResponse = await axios.get('https://api.open-meteo.com/v1/forecast', {
@@ -133,12 +184,21 @@ English Example: Try asking, "What is the weather in Lahore?"
 
   const condition = getWeatherCodeDescription(current.weather_code);
 
-  return `The current weather in ${location.name} is ${current.temperature_2m}°C and feels like ${current.apparent_temperature}°C. The condition is ${condition}, with wind speed around ${current.wind_speed_10m} km/h.
+  return `Explanation:
+- The current weather in ${location.name} is ${current.temperature_2m}°C.
+- It feels like ${current.apparent_temperature}°C.
+- The sky condition is ${condition}.
+- Wind speed is around ${current.wind_speed_10m} km/h.
+- Urdu: Agar weather hot feel ho, pani peena helpful hota hai.
 
-اردو میں وضاحت: ${location.name} میں اس وقت درجہ حرارت ${current.temperature_2m}°C ہے اور محسوس ${current.apparent_temperature}°C جیسا ہو رہا ہے۔ موسم ${condition} ہے، اور ہوا کی رفتار تقریباً ${current.wind_speed_10m} km/h ہے۔
+Example:
+- If it feels hot outside, carry water before going to class.
 
-English Example: If it feels hot, drink water and avoid staying in direct sunlight for too long.
-اردو میں مثال: اگر گرمی محسوس ہو تو پانی پئیں اور زیادہ دیر دھوپ میں نہ رہیں۔`;
+Follow-up:
+- Do you want:
+  1) A simpler explanation
+  2) A quiz
+  3) Translation in Urdu`;
 }
 
 async function generateMcqs(topic) {
@@ -178,6 +238,30 @@ async function askGemini(systemPrompt, userContent) {
     .join('\n');
 
   return text || 'Sorry, I could not generate a response. Please try again.';
+}
+
+function buildConversationContext(question, conversationHistory) {
+  if (!Array.isArray(conversationHistory)) {
+    return question;
+  }
+
+  const recentMessages = conversationHistory
+    .filter((message) => message && typeof message.text === 'string' && message.text.trim())
+    .slice(-6)
+    .map((message) => {
+      const role = message.role === 'user' ? 'Student' : 'Tutor';
+      return `${role}: ${message.text.trim()}`;
+    });
+
+  if (recentMessages.length === 0) {
+    return question;
+  }
+
+  return `Recent conversation:
+${recentMessages.join('\n')}
+
+Latest student question:
+${question}`;
 }
 
 function getGeminiErrorMessage(error) {
@@ -224,7 +308,7 @@ app.get('/', (req, res) => {
 });
 
 app.post('/ask', async (req, res) => {
-  const { question } = req.body;
+  const { question, conversationHistory } = req.body;
 
   if (!question || typeof question !== 'string') {
     return res.status(400).json({
@@ -239,7 +323,10 @@ app.post('/ask', async (req, res) => {
       return res.json({ answer: weatherAnswer });
     }
 
-    const answer = await askGemini(SYSTEM_PROMPT, question);
+    const answer = await askGemini(
+      SYSTEM_PROMPT,
+      buildConversationContext(question, conversationHistory),
+    );
 
     return res.json({ answer });
   } catch (error) {

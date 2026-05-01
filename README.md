@@ -1,50 +1,107 @@
-# Welcome to your Expo app 👋
+# AI Study Companion
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+AI Study Companion is an Expo app backed by an Express API. The app gives students short explanations, quiz prompts, study plans, and quick weather checks through a chat-first mobile interface.
 
-## Get started
+## Project Structure
 
-1. Install dependencies
+- `app/`: Expo Router screens for the tutor and study guide tabs.
+- `components/`, `hooks/`, `constants/`: shared UI, theme, and platform helpers.
+- `ai-study-backend/`: Express server that talks to Gemini and Open-Meteo.
+
+## Prerequisites
+
+- Node.js 20 or newer is recommended.
+- npm for dependency installation.
+- A Gemini API key for AI answers and quizzes.
+
+## Backend Setup
+
+1. Install backend dependencies:
+
+   ```bash
+   cd ai-study-backend
+   npm install
+   ```
+
+2. Create a backend `.env` file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Set `GEMINI_API_KEY` in `ai-study-backend/.env`.
+
+4. Start the API:
+
+   ```bash
+   npm run dev
+   ```
+
+The API runs on `http://localhost:3000` by default. Available routes:
+
+- `GET /`: health check.
+- `POST /ask`: study answers and weather questions.
+- `POST /quiz`: three-question MCQ generation.
+
+## App Setup
+
+1. Install app dependencies:
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. If you are testing on a physical phone, point the app at your machine's LAN address:
 
    ```bash
-   npx expo start
+   EXPO_PUBLIC_API_BASE_URL=http://YOUR_LAN_IP:3000 npm start
    ```
 
-In the output, you'll find options to open the app in a
+   For web and iOS simulator, the app defaults to `http://localhost:3000`. For Android emulator, it defaults to `http://10.0.2.2:3000`.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+3. For real Gmail sign-in, create OAuth client IDs in Google Cloud Console and add them to `.env`:
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+   ```bash
+   cp .env.example .env
+   ```
 
-## Get a fresh project
+   ```bash
+   EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_google_web_client_id.apps.googleusercontent.com
+   EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=your_google_ios_client_id.apps.googleusercontent.com
+   EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=your_google_android_client_id.apps.googleusercontent.com
+   ```
 
-When you're ready, run:
+   Restart Expo after changing `EXPO_PUBLIC_*` values.
+
+   Real Google sign-in uses `@react-native-google-signin/google-signin`, so it requires a development/native build. It will not run inside Expo Go. The current native identifiers are:
+
+   - iOS bundle identifier: `com.aistudycompanion.app`
+   - Android package: `com.aistudycompanion.app`
+   - iOS URL scheme: `com.googleusercontent.apps.400215446002-6qvvqf4k07j99qokpqo11o64rb74ekrl`
+
+4. Start Expo:
+
+   ```bash
+   npm start
+   ```
+
+## Quality Checks
+
+Run the frontend linter:
 
 ```bash
-npm run reset-project
+npm run lint
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Run a backend syntax smoke check:
 
-## Learn more
+```bash
+cd ai-study-backend
+npm run smoke
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+## Notes
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- Keep API keys in `ai-study-backend/.env`; do not expose them through `EXPO_PUBLIC_*` variables.
+- The Expo app only needs the backend base URL. All Gemini requests should go through the Express server.
+- The legacy root-level `server.js` is not the production study API; use `ai-study-backend/server.js`.

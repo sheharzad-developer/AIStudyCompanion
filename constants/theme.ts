@@ -5,24 +5,69 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+export const Design = {
+  color: {
+    canvas: '#F7F9FC',
+    surface: '#FFFFFF',
+    surfaceMuted: '#EEF4FF',
+    surfaceWarm: '#FFF7ED',
+    border: '#E2E8F0',
+    borderStrong: '#CBD5E1',
+    text: '#0F172A',
+    muted: '#64748B',
+    subtle: '#94A3B8',
+    primary: '#2563EB',
+    primaryPressed: '#1D4ED8',
+    primarySoft: '#DBEAFE',
+    success: '#0F9F6E',
+    successSoft: '#DCFCE7',
+    warning: '#F59E0B',
+    warningSoft: '#FEF3C7',
+    danger: '#E11D48',
+    dangerSoft: '#FFE4E6',
+  },
+  radius: {
+    sm: 14,
+    md: 20,
+    lg: 28,
+    xl: 34,
+    pill: 999,
+  },
+  space: {
+    xs: 6,
+    sm: 10,
+    md: 16,
+    lg: 20,
+    xl: 28,
+    xxl: 36,
+  },
+  shadow: {
+    color: '#0F172A',
+    opacity: 0.08,
+    radius: 22,
+    offset: { width: 0, height: 12 },
+    elevation: 3,
+  },
+} as const;
+
+const tintColorLight = Design.color.primary;
+const tintColorDark = Design.color.primary;
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: Design.color.text,
+    background: Design.color.canvas,
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
+    icon: Design.color.muted,
+    tabIconDefault: Design.color.subtle,
     tabIconSelected: tintColorLight,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: Design.color.text,
+    background: Design.color.canvas,
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: Design.color.muted,
+    tabIconDefault: Design.color.subtle,
     tabIconSelected: tintColorDark,
   },
 };
