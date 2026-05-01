@@ -2,6 +2,12 @@
 
 AI Study Companion is an Expo app backed by an Express API. The app gives students short explanations, quiz prompts, study plans, and quick weather checks through a chat-first mobile interface.
 
+## Screenshots
+
+| Tutor overview | Quiz response | Follow-up flow |
+| --- | --- | --- |
+| ![Tutor overview](docs/assets/readme-tutor-overview.png) | ![Quiz response](docs/assets/readme-tutor-quiz.png) | ![Follow-up flow](docs/assets/readme-tutor-follow-up.png) |
+
 ## Project Structure
 
 - `app/`: Expo Router screens for the tutor and study guide tabs.
