@@ -10,7 +10,8 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.aistudycompanion.app",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.aistudycompanion.app",
@@ -46,7 +47,8 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.400215446002-6qvvqf4k07j99qokpqo11o64rb74ekrl"
         }
-      ]
+      ],
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true,
