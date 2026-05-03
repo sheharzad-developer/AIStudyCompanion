@@ -35,7 +35,10 @@ export default function RootLayout() {
             fontWeight: '800',
           },
         }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="(tabs)"
+          options={{ headerShown: false, title: 'Home', headerBackTitle: 'Home' }}
+        />
         <Stack.Screen name="about" options={{ title: 'About' }} />
         <Stack.Screen name="features" options={{ title: 'Features' }} />
         <Stack.Screen name="study-plan" options={{ title: 'Study Plan' }} />
