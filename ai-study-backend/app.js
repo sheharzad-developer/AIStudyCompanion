@@ -10,6 +10,12 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
 
+if (!GEMINI_API_KEY) {
+  // Vercel: surface this in the function logs, do not exit the process —
+  // exiting the worker would mark the deployment unhealthy on every cold start.
+  console.error('ERROR: GEMINI_API_KEY is not set');
+}
+
 const SYSTEM_PROMPT = `You are an AI Study Companion for students.
 
 ========================================
@@ -217,7 +223,7 @@ async function askGemini(systemPrompt, userContent) {
         },
       ],
       generationConfig: {
-        maxOutputTokens: 700,
+        maxOutputTokens: 300,
       },
     },
     {
@@ -274,12 +280,6 @@ function getGeminiErrorMessage(error) {
   }
 
   return geminiMessage || 'Failed to get AI response';
-}
-
-if (!GEMINI_API_KEY) {
-  // Vercel: surface this in the function logs, do not exit the process —
-  // exiting the worker would mark the deployment unhealthy on every cold start.
-  console.error('ERROR: GEMINI_API_KEY is not set');
 }
 
 const app = express();

@@ -35,7 +35,7 @@ AI Study Companion is an Expo app backed by an Express API. The app gives studen
    cp .env.example .env
    ```
 
-3. Set `GEMINI_API_KEY` in `ai-study-backend/.env`.
+3. Set `ANTHROPIC_API_KEY` in `ai-study-backend/.env`. Optionally override `ANTHROPIC_MODEL` (default: `claude-opus-4-7`; use `claude-haiku-4-5` for cheaper/faster responses).
 
 4. Start the API:
 
@@ -113,7 +113,7 @@ The project deploys as **two separate Vercel projects** that point at the same G
 ### Backend (`ai-study-backend/`)
 
 1. Create a new Vercel project, set its **Root Directory** to `ai-study-backend`.
-2. Add `GEMINI_API_KEY` (and optionally `GEMINI_MODEL`) under Project Settings → Environment Variables.
+2. Add `ANTHROPIC_API_KEY` (and optionally `ANTHROPIC_MODEL`) under Project Settings → Environment Variables.
 3. Deploy. `vercel.json` rewrites all routes to `api/index.js`, which loads the shared Express app from `app.js`.
 
 The local `npm run dev` workflow is unchanged — `server.js` still calls `app.listen` for local development; only the Vercel deploy path goes through `api/index.js`.
@@ -131,5 +131,5 @@ For real Google sign-in on the web build, also add the Vercel domain to your OAu
 ## Notes
 
 - Keep API keys in `ai-study-backend/.env`; do not expose them through `EXPO_PUBLIC_*` variables.
-- The Expo app only needs the backend base URL. All Gemini requests should go through the Express server.
+- The Expo app only needs the backend base URL. All Anthropic requests should go through the Express server.
 - The legacy root-level `server.js` is not the production study API; use `ai-study-backend/server.js`.
