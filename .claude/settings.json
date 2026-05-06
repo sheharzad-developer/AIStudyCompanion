@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('vercel.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('ai-study-backend/vercel.json','utf8'\\)\\); console.log\\('both vercel.json valid'\\)\")"
+    ]
+  }
+}

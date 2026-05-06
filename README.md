@@ -106,6 +106,28 @@ cd ai-study-backend
 npm run smoke
 ```
 
+## Deploying to Vercel
+
+The project deploys as **two separate Vercel projects** that point at the same Git repository: one for the Expo web build, one for the Express backend. The native iOS/Android apps are not deployable to Vercel — use EAS Build for those.
+
+### Backend (`ai-study-backend/`)
+
+1. Create a new Vercel project, set its **Root Directory** to `ai-study-backend`.
+2. Add `GEMINI_API_KEY` (and optionally `GEMINI_MODEL`) under Project Settings → Environment Variables.
+3. Deploy. `vercel.json` rewrites all routes to `api/index.js`, which loads the shared Express app from `app.js`.
+
+The local `npm run dev` workflow is unchanged — `server.js` still calls `app.listen` for local development; only the Vercel deploy path goes through `api/index.js`.
+
+> **Rate limit caveat:** `express-rate-limit` uses in-memory state, which serverless functions cannot share across cold starts. The limiter still runs but the counters are unreliable. For production, swap the limiter store to Vercel KV or Upstash Redis.
+
+### Web app (repository root)
+
+1. Create a second Vercel project, leave **Root Directory** as the repo root.
+2. Set `EXPO_PUBLIC_API_BASE_URL` to the backend project's deployed URL (e.g. `https://aistudycompanion-api.vercel.app`).
+3. Deploy. `vercel.json` runs `npm run build:web` (which is `expo export -p web`) and serves `dist/`.
+
+For real Google sign-in on the web build, also add the Vercel domain to your OAuth client's "Authorized JavaScript origins" in Google Cloud Console. The `@react-native-google-signin/google-signin` native module is a no-op on web, so users see the email form unless a web-specific OAuth flow is added.
+
 ## Notes
 
 - Keep API keys in `ai-study-backend/.env`; do not expose them through `EXPO_PUBLIC_*` variables.
