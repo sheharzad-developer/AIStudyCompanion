@@ -222,13 +222,17 @@ export default function TutorScreen() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/ask`, {
-        question: userMessage.text,
-        conversationHistory: nextMessages.slice(-8).map((message) => ({
-          role: message.type,
-          text: message.text,
-        })),
-      });
+      const response = await axios.post(
+        `${API_BASE_URL}/ask`,
+        {
+          question: userMessage.text,
+          conversationHistory: nextMessages.slice(-8).map((message) => ({
+            role: message.type,
+            text: message.text,
+          })),
+        },
+        { timeout: 120000 },
+      );
 
       setMessages((prevMessages) => [
         ...prevMessages,
