@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "lint": "node --check server.js",
-    "smoke": "node --check server.js"
+    "lint": "node --check app.js && node --check server.js && node --check api/index.js",
+    "smoke": "node --check app.js && node --check server.js && node --check api/index.js"
   },
   "keywords": [],
   "author": "",
