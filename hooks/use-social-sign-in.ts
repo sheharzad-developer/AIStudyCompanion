@@ -17,6 +17,8 @@ export type UseSocialSignInResult = {
   error: string | null;
   isAvailable: boolean;
   unavailableReason: string | null;
+  /** Short chip label shown on the button when sign-in isn't available here. */
+  unavailableLabel: string | null;
   clearError: () => void;
 };
 
@@ -120,7 +122,13 @@ function googleClientIdForPlatform() {
   return GOOGLE_CLIENT_IDS.webClientId;
 }
 
+// Expo Go is a shared app and can't include the native Google Sign-In module.
+const IS_EXPO_GO = Constants.appOwnership === 'expo';
+
 function googleUnavailableReason(): string | null {
+  if (Platform.OS !== 'web' && IS_EXPO_GO) {
+    return 'Gmail sign-in isn’t available in Expo Go. Use email below, or sign in with Gmail on the website or in the installed app.';
+  }
   if (googleClientIdForPlatform()) return null;
   if (Platform.OS === 'ios') {
     return 'Add EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID, then run a development build. Expo Go cannot load native Google Sign-In.';
@@ -190,13 +198,6 @@ export function useSocialSignIn(
 
   const signInWithGoogle = useCallback(async () => {
     if (Platform.OS === 'web') return signInWithGoogleWeb();
-
-    if (Constants.appOwnership === 'expo') {
-      setError(
-        'Real Gmail sign-in needs a development build. Expo Go cannot load native Google Sign-In.',
-      );
-      return;
-    }
 
     setError(null);
     setIsLoading(true);
@@ -285,6 +286,13 @@ export function useSocialSignIn(
 
   const unavailableReason =
     provider === 'google' ? googleUnavailableReason() : appleUnavailableReason();
+  const unavailableLabel = !unavailableReason
+    ? null
+    : provider === 'apple'
+      ? 'iOS only'
+      : Platform.OS !== 'web' && IS_EXPO_GO
+        ? 'Web only'
+        : 'Setup';
 
   const signIn = useCallback(async () => {
     if (unavailableReason) {
@@ -301,6 +309,7 @@ export function useSocialSignIn(
     error,
     isAvailable: unavailableReason === null,
     unavailableReason,
+    unavailableLabel,
     clearError,
   };
 }

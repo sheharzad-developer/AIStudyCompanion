@@ -141,7 +141,7 @@ function SocialSignInButton({
   onSuccess: (profile: SocialProfile) => void;
   onError: (message: string) => void;
 }) {
-  const { signIn, isLoading, isAvailable, unavailableReason, error } = useSocialSignIn(
+  const { signIn, isLoading, isAvailable, unavailableLabel, error } = useSocialSignIn(
     config.provider,
     onSuccess,
   );
@@ -178,9 +178,7 @@ function SocialSignInButton({
         <MaterialIcons name="arrow-forward-ios" size={14} color={Design.color.muted} />
       ) : (
         <View style={styles.statusChip}>
-          <ThemedText style={styles.statusChipText}>
-            {unavailableReason ? 'Setup' : 'Soon'}
-          </ThemedText>
+          <ThemedText style={styles.statusChipText}>{unavailableLabel}</ThemedText>
         </View>
       )}
     </Pressable>
