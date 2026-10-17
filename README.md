@@ -121,7 +121,7 @@ The local `npm run dev` workflow is unchanged — `ai-study-backend/server.js` s
 
 > **Rate limit caveat:** `express-rate-limit` uses in-memory state, which serverless functions cannot share across cold starts. The limiter still runs but the counters are unreliable. For production, swap the limiter store to Vercel KV or Upstash Redis.
 
-For real Google sign-in on the web build, also add the Vercel domain to your OAuth client's "Authorized JavaScript origins" in Google Cloud Console. The `@react-native-google-signin/google-signin` native module is a no-op on web, so users see the email form unless a web-specific OAuth flow is added.
+For Google sign-in on the web build, set `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in Vercel and add your Vercel domain (e.g. `https://your-app.vercel.app`) to the OAuth client's **Authorized JavaScript origins** in Google Cloud Console. Add `http://localhost:8081` as well for local testing. The web build signs in with Google Identity Services; iOS and Android use the native Google Sign-In module, which needs a development build.
 
 ## Notes
 
