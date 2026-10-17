@@ -97,10 +97,24 @@ function getDefaultApiBaseUrl() {
   return 'http://localhost:3000';
 }
 
-const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || getDefaultApiBaseUrl()).replace(
-  /\/$/,
-  '',
-);
+// The deployed web build serves the backend from the same origin under /api.
+const SAME_ORIGIN_API_PATH = '/api';
+
+function getApiBaseUrl() {
+  const configured = process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/\/$/, '');
+
+  if (Platform.OS === 'web' && !__DEV__) {
+    // An http:// backend is blocked as mixed content on an https page (e.g. a LAN IP
+    // left in the deploy env), so fall back to the same-origin API instead.
+    const isHttpsPage = typeof window !== 'undefined' && window.location.protocol === 'https:';
+
+    if (!configured || (isHttpsPage && configured.startsWith('http:'))) {
+      return SAME_ORIGIN_API_PATH;
+    }
+  }
+
+  return configured || getDefaultApiBaseUrl();
+}
 
 function createMessage(type: MessageType, text: string): Message {
   return {
@@ -223,7 +237,7 @@ export default function TutorScreen() {
 
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/ask`,
+        `${getApiBaseUrl()}/ask`,
         {
           question: userMessage.text,
           conversationHistory: nextMessages.slice(-8).map((message) => ({
@@ -246,7 +260,7 @@ export default function TutorScreen() {
 
       const errorText = isAxiosError(error)
         ? error.response?.data?.error ||
-          `Could not reach the study server at ${API_BASE_URL}. Check the backend and network.`
+          `Could not reach the study server at ${getApiBaseUrl()}. Check the backend and network.`
         : 'Something went wrong. Please try again.';
 
       setMessages((prevMessages) => [
@@ -400,7 +414,7 @@ export default function TutorScreen() {
               <MaterialIcons name="send" size={20} color="#FFFFFF" />
             </Pressable>
           </View>
-          {__DEV__ ? <Text style={styles.helperText}>Backend: {API_BASE_URL}</Text> : null}
+          {__DEV__ ? <Text style={styles.helperText}>Backend: {getApiBaseUrl()}</Text> : null}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

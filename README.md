@@ -12,13 +12,14 @@ AI Study Companion is an Expo app backed by an Express API. The app gives studen
 
 - `app/`: Expo Router screens for the tutor and study guide tabs.
 - `components/`, `hooks/`, `constants/`: shared UI, theme, and platform helpers.
-- `ai-study-backend/`: Express server that talks to Gemini and Open-Meteo.
+- `ai-study-backend/`: Express server that talks to Groq (LLM) and Open-Meteo (weather).
+- `api/`: Vercel serverless entry that serves the backend under `/api` on the web app's domain.
 
 ## Prerequisites
 
 - Node.js 20 or newer is recommended.
 - npm for dependency installation.
-- A Gemini API key for AI answers and quizzes.
+- A [Groq](https://console.groq.com/keys) API key for AI answers and quizzes.
 
 ## Backend Setup
 
@@ -35,7 +36,7 @@ AI Study Companion is an Expo app backed by an Express API. The app gives studen
    cp .env.example .env
    ```
 
-3. Set `ANTHROPIC_API_KEY` in `ai-study-backend/.env`. Optionally override `ANTHROPIC_MODEL` (default: `claude-opus-4-7`; use `claude-haiku-4-5` for cheaper/faster responses).
+3. Set `GROQ_API_KEY` in `ai-study-backend/.env`. Optionally override `GROQ_MODEL` (default: `openai/gpt-oss-120b`).
 
 4. Start the API:
 
@@ -108,28 +109,22 @@ npm run smoke
 
 ## Deploying to Vercel
 
-The project deploys as **two separate Vercel projects** that point at the same Git repository: one for the Expo web build, one for the Express backend. The native iOS/Android apps are not deployable to Vercel — use EAS Build for those.
+The web app and the API deploy together as **one Vercel project** from the repository root. The native iOS/Android apps are not deployable to Vercel — use EAS Build for those.
 
-### Backend (`ai-study-backend/`)
+1. Import the repository into Vercel and leave **Root Directory** as the repo root.
+2. Under Project Settings → Environment Variables, add `GROQ_API_KEY` (and optionally `GROQ_MODEL`).
+3. Deploy. `vercel.json` runs `npm run build:web` (`expo export -p web`), serves `dist/`, and routes `/api/*` to `api/index.js`, which mounts the Express app from `ai-study-backend/app.js`.
 
-1. Create a new Vercel project, set its **Root Directory** to `ai-study-backend`.
-2. Add `ANTHROPIC_API_KEY` (and optionally `ANTHROPIC_MODEL`) under Project Settings → Environment Variables.
-3. Deploy. `vercel.json` rewrites all routes to `api/index.js`, which loads the shared Express app from `app.js`.
+The deployed web build calls the API at `/api` on its own domain, so `EXPO_PUBLIC_API_BASE_URL` is not needed in production. If it is set to an `http://` URL (such as a LAN address), the https site ignores it, because browsers block those requests as mixed content.
 
-The local `npm run dev` workflow is unchanged — `server.js` still calls `app.listen` for local development; only the Vercel deploy path goes through `api/index.js`.
+The local `npm run dev` workflow is unchanged — `ai-study-backend/server.js` still calls `app.listen` on port 3000.
 
 > **Rate limit caveat:** `express-rate-limit` uses in-memory state, which serverless functions cannot share across cold starts. The limiter still runs but the counters are unreliable. For production, swap the limiter store to Vercel KV or Upstash Redis.
-
-### Web app (repository root)
-
-1. Create a second Vercel project, leave **Root Directory** as the repo root.
-2. Set `EXPO_PUBLIC_API_BASE_URL` to the backend project's deployed URL (e.g. `https://aistudycompanion-api.vercel.app`).
-3. Deploy. `vercel.json` runs `npm run build:web` (which is `expo export -p web`) and serves `dist/`.
 
 For real Google sign-in on the web build, also add the Vercel domain to your OAuth client's "Authorized JavaScript origins" in Google Cloud Console. The `@react-native-google-signin/google-signin` native module is a no-op on web, so users see the email form unless a web-specific OAuth flow is added.
 
 ## Notes
 
 - Keep API keys in `ai-study-backend/.env`; do not expose them through `EXPO_PUBLIC_*` variables.
-- The Expo app only needs the backend base URL. All Anthropic requests should go through the Express server.
+- The Expo app only needs the backend base URL. All Groq requests go through the Express server, so the API key never reaches the client.
 - The legacy root-level `server.js` is not the production study API; use `ai-study-backend/server.js`.

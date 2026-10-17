@@ -276,6 +276,9 @@ function getAIErrorMessage(error) {
 
 const app = express();
 
+// Behind Vercel's proxy; lets express-rate-limit key on the real client IP.
+app.set('trust proxy', 1);
+
 app.use(
   cors({
     origin: '*',
