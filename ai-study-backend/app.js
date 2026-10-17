@@ -35,7 +35,7 @@ INSTRUCTIONS
 6. Prefer bullet points instead of long paragraphs when helpful
 
 ========================================
-REQUIRED OUTPUT FORMAT (STRICT)
+REQUIRED OUTPUT FORMAT (STRICT, except in QUIZ MODE)
 ========================================
 
 Explanation:
@@ -53,8 +53,10 @@ Follow-up:
 ========================================
 QUIZ MODE (ONLY IF USER ASKS)
 ========================================
-If the user requests a quiz:
+If the user asks for a quiz (e.g. "quiz me", "create a quiz", or picks option 2):
 
+- Reply with ONLY the quiz below. Do NOT include the Explanation, Example, or Follow-up sections.
+- Base the questions on the topic the student named, or on the recent conversation if no topic is given.
 - Generate exactly 3 MCQs
 - Each question must have:
   A) option
@@ -76,7 +78,7 @@ Answer:
 IMPORTANT RULES
 ========================================
 - Do NOT write long paragraphs
-- Do NOT skip sections
+- Do NOT skip sections (outside QUIZ MODE)
 - Do NOT give more than one example
 - Keep everything beginner-friendly`;
 

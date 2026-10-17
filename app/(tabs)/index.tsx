@@ -1,5 +1,6 @@
 import axios, { isAxiosError } from 'axios';
 import Constants from 'expo-constants';
+import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -206,6 +207,7 @@ export default function TutorScreen() {
   const insets = useSafeAreaInsets();
   const contentWidth = useResponsiveWidth();
   const { rememberContext, chatResetCount } = useStudySettings();
+  const { prompt: incomingPrompt } = useLocalSearchParams<{ prompt?: string }>();
   const [messages, setMessages] = useState<Message[]>([
     createMessage(MESSAGE_TYPES.AI, WELCOME_TEXT),
   ]);
@@ -281,6 +283,16 @@ export default function TutorScreen() {
       setIsLoading(false);
     }
   };
+
+  // Prompts tapped in the Guide arrive as ?prompt=…; send once, then clear the param.
+  const sendMessageRef = useRef(handleSendMessage);
+  sendMessageRef.current = handleSendMessage;
+
+  useEffect(() => {
+    if (!incomingPrompt || isLoading) return;
+    router.setParams({ prompt: undefined });
+    sendMessageRef.current(incomingPrompt);
+  }, [incomingPrompt, isLoading]);
 
   const handleComposerLayout = useCallback((event: LayoutChangeEvent) => {
     setComposerHeight(event.nativeEvent.layout.height);

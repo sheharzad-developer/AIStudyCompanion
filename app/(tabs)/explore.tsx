@@ -1,6 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppCard, ScreenScroll, appStyles } from '@/components/ui/app-primitives';
 import { ThemedText } from '@/components/themed-text';
@@ -14,6 +15,8 @@ const GUIDE_ACCENT_DARK = '#5B21B6';
 type Feature = {
   title: string;
   body: string;
+  /** Sent to the tutor when the tile is tapped. */
+  prompt: string;
   icon: MaterialIconName;
   accent: string;
 };
@@ -21,24 +24,28 @@ type Feature = {
 const features: readonly Feature[] = [
   {
     title: 'Simple explanations',
+    prompt: 'Explain photosynthesis in simple words',
     body: 'Short answers with one practical example.',
     icon: 'lightbulb-outline',
     accent: Design.color.warning,
   },
   {
     title: 'Quiz practice',
+    prompt: 'Quiz me on Newton laws',
     body: 'Generate three beginner-friendly MCQs.',
     icon: 'help-outline',
     accent: Design.color.primary,
   },
   {
     title: 'Study planning',
+    prompt: 'Make a 20-minute study plan for fractions',
     body: 'Turn a topic into a focused sprint.',
     icon: 'event-note',
     accent: Design.color.success,
   },
   {
     title: 'Weather checks',
+    prompt: 'What is the weather in Lahore?',
     body: 'Plan around travel and class conditions.',
     icon: 'wb-sunny',
     accent: '#0EA5E9',
@@ -51,16 +58,20 @@ const prompts = [
   'Create a quiz about World War II causes.',
 ];
 
-type SetupTip = {
+type StudyTip = {
   text: string;
   icon: MaterialIconName;
 };
 
-const setupTips: readonly SetupTip[] = [
-  { text: 'Start the backend from ai-study-backend.', icon: 'terminal' },
-  { text: 'Use EXPO_PUBLIC_API_BASE_URL for physical phones.', icon: 'tune' },
-  { text: 'Keep GEMINI_API_KEY only in the backend .env file.', icon: 'lock-outline' },
+const studyTips: readonly StudyTip[] = [
+  { text: 'Name the topic and your level, e.g. "grade 8" or "beginner".', icon: 'school' },
+  { text: 'Ask a follow-up like "simpler please" or "give another example".', icon: 'forum' },
+  { text: 'End each topic with a quiz to check what stuck.', icon: 'fact-check' },
 ];
+
+function askTutor(prompt: string) {
+  router.push({ pathname: '/', params: { prompt } });
+}
 
 export default function StudyGuideScreen() {
   return (
@@ -77,8 +88,7 @@ export default function StudyGuideScreen() {
           </View>
           <ThemedText style={styles.heroTitle}>Use better prompts.{'\n'}Get better answers.</ThemedText>
           <ThemedText style={styles.heroBody}>
-            A clean guide for asking focused questions, turning answers into practice, and keeping
-            setup healthy.
+            Tap any prompt or capability to send it straight to your tutor.
           </ThemedText>
 
           <View style={styles.heroStats}>
@@ -89,12 +99,12 @@ export default function StudyGuideScreen() {
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
               <ThemedText style={styles.heroStatValue}>{prompts.length}</ThemedText>
-              <ThemedText style={styles.heroStatLabel}>ready prompts</ThemedText>
+              <ThemedText style={styles.heroStatLabel}>prompts</ThemedText>
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
-              <ThemedText style={styles.heroStatValue}>{setupTips.length}</ThemedText>
-              <ThemedText style={styles.heroStatLabel}>setup steps</ThemedText>
+              <ThemedText style={styles.heroStatValue}>{studyTips.length}</ThemedText>
+              <ThemedText style={styles.heroStatLabel}>study tips</ThemedText>
             </View>
           </View>
         </LinearGradient>
@@ -110,7 +120,12 @@ export default function StudyGuideScreen() {
 
         <View style={styles.tileGrid}>
           {features.map((feature) => (
-            <View key={feature.title} style={styles.tile}>
+            <Pressable
+              key={feature.title}
+              accessibilityRole="button"
+              accessibilityHint={`Asks the tutor: ${feature.prompt}`}
+              onPress={() => askTutor(feature.prompt)}
+              style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
               <View style={[styles.tileIcon, { backgroundColor: `${feature.accent}18` }]}>
                 <MaterialIcons name={feature.icon} size={22} color={feature.accent} />
               </View>
@@ -118,7 +133,7 @@ export default function StudyGuideScreen() {
                 {feature.title}
               </ThemedText>
               <ThemedText style={styles.tileBody}>{feature.body}</ThemedText>
-            </View>
+            </Pressable>
           ))}
         </View>
       </View>
@@ -131,17 +146,22 @@ export default function StudyGuideScreen() {
           <View style={styles.panelHeaderText}>
             <ThemedText type="subtitle">Best prompts</ThemedText>
             <ThemedText style={styles.sectionCaption}>
-              Copy these openings — they steer the tutor toward sharper answers.
+              Tap one to ask the tutor — they steer it toward sharper answers.
             </ThemedText>
           </View>
         </View>
 
         <View style={styles.promptList}>
           {prompts.map((prompt) => (
-            <View key={prompt} style={styles.promptRow}>
+            <Pressable
+              key={prompt}
+              accessibilityRole="button"
+              onPress={() => askTutor(prompt)}
+              style={({ pressed }) => [styles.promptRow, pressed && styles.pressed]}>
               <View style={styles.promptAccent} />
               <ThemedText style={styles.promptText}>{prompt}</ThemedText>
-            </View>
+              <MaterialIcons name="send" size={16} color={GUIDE_ACCENT} style={styles.promptSend} />
+            </Pressable>
           ))}
         </View>
       </AppCard>
@@ -149,18 +169,18 @@ export default function StudyGuideScreen() {
       <AppCard muted style={styles.panel}>
         <View style={styles.panelHeader}>
           <View style={[styles.panelIcon, { backgroundColor: `${Design.color.success}18` }]}>
-            <MaterialIcons name="check-circle-outline" size={18} color={Design.color.success} />
+            <MaterialIcons name="tips-and-updates" size={18} color={Design.color.success} />
           </View>
           <View style={styles.panelHeaderText}>
-            <ThemedText type="subtitle">Setup checklist</ThemedText>
+            <ThemedText type="subtitle">Study tips</ThemedText>
             <ThemedText style={styles.sectionCaption}>
-              Quick checks to keep the development environment healthy.
+              Small habits that get you clearer answers and better recall.
             </ThemedText>
           </View>
         </View>
 
         <View style={styles.checkList}>
-          {setupTips.map((tip, index) => (
+          {studyTips.map((tip, index) => (
             <View key={tip.text} style={styles.checkRow}>
               <View style={styles.checkIconWrap}>
                 <View style={styles.checkIcon}>
@@ -180,6 +200,10 @@ export default function StudyGuideScreen() {
 }
 
 const styles = StyleSheet.create({
+  pressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.98 }],
+  },
   heroShell: {
     borderRadius: Design.radius.xl,
     overflow: 'hidden',
@@ -337,6 +361,9 @@ const styles = StyleSheet.create({
     width: 3,
     borderRadius: 2,
     backgroundColor: GUIDE_ACCENT,
+  },
+  promptSend: {
+    alignSelf: 'center',
   },
   promptText: {
     flex: 1,
