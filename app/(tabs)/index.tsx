@@ -21,6 +21,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Design } from '@/constants/theme';
+import { useStudySettings } from '@/hooks/use-study-settings';
 
 type ConstantsWithManifest = typeof Constants & {
   manifest?: {
@@ -198,14 +199,15 @@ const MessageBubble = memo(function MessageBubble({
   );
 });
 
+const WELCOME_TEXT =
+  'Hi, I am your AI Study Companion. Ask for a simple explanation, quiz, study plan, or quick weather check.';
+
 export default function TutorScreen() {
   const insets = useSafeAreaInsets();
   const contentWidth = useResponsiveWidth();
+  const { rememberContext, chatResetCount } = useStudySettings();
   const [messages, setMessages] = useState<Message[]>([
-    createMessage(
-      MESSAGE_TYPES.AI,
-      'Hi, I am your AI Study Companion. Ask for a simple explanation, quiz, study plan, or quick weather check.',
-    ),
+    createMessage(MESSAGE_TYPES.AI, WELCOME_TEXT),
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -216,6 +218,12 @@ export default function TutorScreen() {
     () => messages.filter((message) => message.type === MESSAGE_TYPES.USER).length,
     [messages],
   );
+
+  // "Clear chat history" in Profile → Privacy.
+  useEffect(() => {
+    if (chatResetCount === 0) return;
+    setMessages([createMessage(MESSAGE_TYPES.AI, WELCOME_TEXT)]);
+  }, [chatResetCount]);
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -240,10 +248,12 @@ export default function TutorScreen() {
         `${getApiBaseUrl()}/ask`,
         {
           question: userMessage.text,
-          conversationHistory: nextMessages.slice(-8).map((message) => ({
-            role: message.type,
-            text: message.text,
-          })),
+          conversationHistory: rememberContext
+            ? nextMessages.slice(-8).map((message) => ({
+                role: message.type,
+                text: message.text,
+              }))
+            : [],
         },
         { timeout: 120000 },
       );

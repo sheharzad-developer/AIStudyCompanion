@@ -1,8 +1,17 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  StyleSheet,
+  Switch,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { AppButton, AppCard, ScreenScroll, appStyles } from '@/components/ui/app-primitives';
 import { ThemedText } from '@/components/themed-text';
@@ -12,8 +21,12 @@ import {
   type SocialProvider,
   useSocialSignIn,
 } from '@/hooks/use-social-sign-in';
-
-type Profile = SocialProfile | { name: string; email: string; provider: 'Email' };
+import {
+  type Profile,
+  clearChatHistory,
+  updateStudySettings,
+  useStudySettings,
+} from '@/hooks/use-study-settings';
 
 type FontAwesomeIconName = React.ComponentProps<typeof FontAwesome>['name'];
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
@@ -46,7 +59,10 @@ const SOCIAL_BUTTONS: readonly SocialButtonConfig[] = [
   },
 ];
 
+type SettingsRowKey = 'account' | 'notifications' | 'privacy' | 'help';
+
 type SettingsRow = {
+  key: SettingsRowKey;
   label: string;
   description: string;
   icon: MaterialIconName;
@@ -55,30 +71,66 @@ type SettingsRow = {
 
 const settingsRows: readonly SettingsRow[] = [
   {
+    key: 'account',
     label: 'Account preferences',
     description: 'Display name, email, and study identity.',
     icon: 'person-outline',
     accent: Design.color.primary,
   },
   {
+    key: 'notifications',
     label: 'Notifications',
     description: 'Daily revision nudges and quiz reminders.',
     icon: 'notifications-none',
     accent: '#7C3AED',
   },
   {
+    key: 'privacy',
     label: 'Privacy',
     description: 'Control what data the tutor remembers.',
     icon: 'lock-outline',
     accent: '#0EA5E9',
   },
   {
+    key: 'help',
     label: 'Help & feedback',
     description: 'Get help or share what could be better.',
     icon: 'help-outline',
     accent: Design.color.warning,
   },
 ];
+
+const ISSUES_URL = 'https://github.com/sheharzad-developer/AIStudyCompanion/issues/new';
+
+function SettingSwitch({
+  label,
+  description,
+  value,
+  onValueChange,
+}: {
+  label: string;
+  description: string;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+}) {
+  return (
+    <View style={styles.switchRow}>
+      <View style={styles.settingsBody}>
+        <ThemedText type="defaultSemiBold" style={styles.switchLabel}>
+          {label}
+        </ThemedText>
+        <ThemedText style={styles.settingsDescription}>{description}</ThemedText>
+      </View>
+      <Switch
+        accessibilityLabel={label}
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: Design.color.border, true: PROFILE_ACCENT }}
+        thumbColor="#FFFFFF"
+      />
+    </View>
+  );
+}
 
 function SocialSignInButton({
   config,
@@ -138,8 +190,39 @@ function SocialSignInButton({
 export default function ProfileScreen() {
   const [name, setName] = useState('Study Hero');
   const [email, setEmail] = useState('student@example.com');
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const settings = useStudySettings();
+  const { profile } = settings;
   const [authError, setAuthError] = useState('');
+  const [expandedRow, setExpandedRow] = useState<SettingsRowKey | null>(null);
+  const [displayName, setDisplayName] = useState('');
+  const [chatCleared, setChatCleared] = useState(false);
+
+  const setProfile = useCallback((next: Profile | null) => {
+    updateStudySettings({ profile: next });
+  }, []);
+
+  const toggleRow = (key: SettingsRowKey) => {
+    setExpandedRow((current) => (current === key ? null : key));
+    if (key === 'account') setDisplayName(profile?.name ?? '');
+    setChatCleared(false);
+  };
+
+  const saveDisplayName = () => {
+    const trimmed = displayName.trim();
+    if (!profile || !trimmed) return;
+    setProfile({ ...profile, name: trimmed });
+    setExpandedRow(null);
+  };
+
+  const handleClearChat = () => {
+    clearChatHistory();
+    setChatCleared(true);
+  };
+
+  const handleSignOut = () => {
+    setProfile(null);
+    setExpandedRow(null);
+  };
 
   const initials = useMemo(() => {
     if (!profile?.name) return 'SC';
@@ -239,36 +322,123 @@ export default function ProfileScreen() {
             </View>
 
             <AppCard style={styles.settingsCard}>
-              {settingsRows.map((row, index) => (
-                <View
-                  key={row.label}
-                  style={[styles.settingsRow, index > 0 && styles.settingsRowDivider]}>
-                  <View style={[styles.settingsIcon, { backgroundColor: `${row.accent}18` }]}>
-                    <MaterialIcons name={row.icon} size={18} color={row.accent} />
+              {settingsRows.map((row, index) => {
+                const isExpanded = expandedRow === row.key;
+
+                return (
+                  <View key={row.key} style={index > 0 && styles.settingsRowDivider}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded: isExpanded }}
+                      onPress={() => toggleRow(row.key)}
+                      style={({ pressed }) => [styles.settingsRow, pressed && styles.pressed]}>
+                      <View style={[styles.settingsIcon, { backgroundColor: `${row.accent}18` }]}>
+                        <MaterialIcons name={row.icon} size={18} color={row.accent} />
+                      </View>
+                      <View style={styles.settingsBody}>
+                        <ThemedText type="defaultSemiBold" style={styles.settingsLabel}>
+                          {row.label}
+                        </ThemedText>
+                        <ThemedText style={styles.settingsDescription}>
+                          {row.description}
+                        </ThemedText>
+                      </View>
+                      <MaterialIcons
+                        name={isExpanded ? 'expand-less' : 'expand-more'}
+                        size={22}
+                        color={Design.color.subtle}
+                      />
+                    </Pressable>
+
+                    {isExpanded && row.key === 'account' ? (
+                      <View style={styles.settingsPanel}>
+                        <ThemedText type="defaultSemiBold" style={styles.fieldLabel}>
+                          Display name
+                        </ThemedText>
+                        <View style={styles.inputWrap}>
+                          <TextInput
+                            accessibilityLabel="Display name"
+                            value={displayName}
+                            onChangeText={setDisplayName}
+                            onSubmitEditing={saveDisplayName}
+                            placeholder="Your name"
+                            placeholderTextColor={Design.color.subtle}
+                            autoCapitalize="words"
+                            style={styles.input}
+                          />
+                        </View>
+                        <ThemedText style={styles.settingsDescription}>
+                          Signed in as {profile.email} with {profile.provider}.
+                        </ThemedText>
+                        <AppButton onPress={saveDisplayName}>Save name</AppButton>
+                      </View>
+                    ) : null}
+
+                    {isExpanded && row.key === 'notifications' ? (
+                      <View style={styles.settingsPanel}>
+                        <SettingSwitch
+                          label="Daily revision nudge"
+                          description="A short daily reminder to review what you studied."
+                          value={settings.dailyNudge}
+                          onValueChange={(value) => updateStudySettings({ dailyNudge: value })}
+                        />
+                        <SettingSwitch
+                          label="Quiz reminders"
+                          description="A reminder to take a quick quiz on recent topics."
+                          value={settings.quizReminders}
+                          onValueChange={(value) => updateStudySettings({ quizReminders: value })}
+                        />
+                        <ThemedText style={styles.settingsDescription}>
+                          Saved on this device. Reminders are delivered once push notifications are
+                          enabled for the app.
+                        </ThemedText>
+                      </View>
+                    ) : null}
+
+                    {isExpanded && row.key === 'privacy' ? (
+                      <View style={styles.settingsPanel}>
+                        <SettingSwitch
+                          label="Remember conversation"
+                          description="Send your recent messages with each question so follow-ups make sense. Turn off to ask every question on its own."
+                          value={settings.rememberContext}
+                          onValueChange={(value) => updateStudySettings({ rememberContext: value })}
+                        />
+                        <AppButton variant="secondary" onPress={handleClearChat}>
+                          Clear chat history
+                        </AppButton>
+                        {chatCleared ? (
+                          <ThemedText style={styles.successText}>Chat history cleared.</ThemedText>
+                        ) : null}
+                      </View>
+                    ) : null}
+
+                    {isExpanded && row.key === 'help' ? (
+                      <View style={styles.settingsPanel}>
+                        <ThemedText style={styles.settingsDescription}>
+                          Found a bug or have an idea? Open an issue on GitHub and include what you
+                          asked and what you expected.
+                        </ThemedText>
+                        <AppButton variant="secondary" onPress={() => Linking.openURL(ISSUES_URL)}>
+                          Report a problem
+                        </AppButton>
+                        <ThemedText style={styles.settingsDescription}>
+                          AI Study Companion v{Constants.expoConfig?.version ?? '1.0.0'}
+                        </ThemedText>
+                      </View>
+                    ) : null}
                   </View>
-                  <View style={styles.settingsBody}>
-                    <ThemedText type="defaultSemiBold" style={styles.settingsLabel}>
-                      {row.label}
-                    </ThemedText>
-                    <ThemedText style={styles.settingsDescription}>{row.description}</ThemedText>
-                  </View>
-                  <MaterialIcons
-                    name="arrow-forward-ios"
-                    size={14}
-                    color={Design.color.subtle}
-                  />
-                </View>
-              ))}
+                );
+              })}
             </AppCard>
           </View>
 
           <AppCard muted style={styles.panel}>
             <ThemedText type="subtitle">Account</ThemedText>
             <ThemedText style={styles.body}>
-              Real Gmail sign-in requires a development build. Email sign-in remains local for demo
-              use until a production auth backend is added.
+              Your profile and settings are saved on this device. Signing out removes your profile
+              from this device.
             </ThemedText>
-            <AppButton variant="danger" onPress={() => setProfile(null)}>
+            <AppButton variant="danger" onPress={handleSignOut}>
               Sign Out
             </AppButton>
           </AppCard>
@@ -283,8 +453,7 @@ export default function ProfileScreen() {
               <View style={styles.panelHeaderText}>
                 <ThemedText type="subtitle">Sign in</ThemedText>
                 <ThemedText style={styles.sectionCaption}>
-                  Continue with Gmail in a development build, or use local email sign-in for demo
-                  testing.
+                  Continue with Gmail, or use email to create a profile on this device.
                 </ThemedText>
               </View>
             </View>
@@ -516,6 +685,25 @@ const styles = StyleSheet.create({
   settingsBody: {
     flex: 1,
     gap: Design.space.xs / 2,
+  },
+  settingsPanel: {
+    gap: Design.space.sm + 2,
+    paddingHorizontal: Design.space.md,
+    paddingBottom: Design.space.md,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Design.space.md,
+  },
+  switchLabel: {
+    color: Design.color.text,
+    fontSize: 14,
+  },
+  successText: {
+    color: PROFILE_ACCENT,
+    fontSize: 13,
+    fontWeight: '600',
   },
   settingsLabel: {
     color: Design.color.text,
