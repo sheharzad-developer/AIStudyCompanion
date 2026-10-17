@@ -6,14 +6,14 @@ const rateLimit = require('express-rate-limit');
 
 dotenv.config();
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta';
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_API_URL = 'https://api.groq.com/openai/v1';
+const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 
-if (!GEMINI_API_KEY) {
+if (!GROQ_API_KEY) {
   // Vercel: surface this in the function logs, do not exit the process —
   // exiting the worker would mark the deployment unhealthy on every cold start.
-  console.error('ERROR: GEMINI_API_KEY is not set');
+  console.error('ERROR: GROQ_API_KEY is not set');
 }
 
 const SYSTEM_PROMPT = `You are an AI Study Companion for students.
@@ -206,40 +206,31 @@ Follow-up:
 }
 
 async function generateMcqs(topic) {
-  return askGemini(MCQ_PROMPT, `Topic: ${topic}`);
+  return askAI(MCQ_PROMPT, `Topic: ${topic}`);
 }
 
-async function askGemini(systemPrompt, userContent) {
+async function askAI(systemPrompt, userContent) {
   const response = await axios.post(
-    `${GEMINI_API_URL}/models/${GEMINI_MODEL}:generateContent`,
+    `${GROQ_API_URL}/chat/completions`,
     {
-      systemInstruction: {
-        parts: [{ text: systemPrompt }],
-      },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: userContent }],
-        },
+      model: GROQ_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userContent },
       ],
-      generationConfig: {
-        maxOutputTokens: 300,
-      },
+      // gpt-oss is a reasoning model; reasoning tokens count toward this limit.
+      reasoning_effort: 'low',
+      max_tokens: 1024,
     },
     {
-      params: {
-        key: GEMINI_API_KEY,
-      },
       headers: {
+        Authorization: `Bearer ${GROQ_API_KEY}`,
         'Content-Type': 'application/json',
       },
     },
   );
 
-  const text = response.data?.candidates?.[0]?.content?.parts
-    ?.map((part) => part.text)
-    .filter(Boolean)
-    .join('\n');
+  const text = response.data?.choices?.[0]?.message?.content;
 
   return text || 'Sorry, I could not generate a response. Please try again.';
 }
@@ -268,18 +259,19 @@ Latest student question:
 ${question}`;
 }
 
-function getGeminiErrorMessage(error) {
-  const geminiMessage = error.response?.data?.error?.message;
+function getAIErrorMessage(error) {
+  const status = error.response?.status;
+  const apiMessage = error.response?.data?.error?.message;
 
-  if (geminiMessage?.toLowerCase().includes('api key not valid')) {
-    return 'The Gemini API key is invalid. Please check your GEMINI_API_KEY and try again.';
+  if (status === 401) {
+    return 'The Groq API key is invalid. Please check your GROQ_API_KEY and try again.';
   }
 
-  if (geminiMessage?.toLowerCase().includes('quota')) {
-    return 'Gemini quota is unavailable right now. Please check billing or quota in Google Cloud.';
+  if (status === 429) {
+    return 'Groq rate limit reached. Please wait a moment and try again.';
   }
 
-  return geminiMessage || 'Failed to get AI response';
+  return apiMessage || 'Failed to get AI response';
 }
 
 const app = express();
@@ -327,17 +319,17 @@ app.post('/ask', async (req, res) => {
       return res.json({ answer: weatherAnswer });
     }
 
-    const answer = await askGemini(
+    const answer = await askAI(
       SYSTEM_PROMPT,
       buildConversationContext(question, conversationHistory),
     );
 
     return res.json({ answer });
   } catch (error) {
-    console.error('Gemini API Error:', error.response?.data || error.message);
+    console.error('AI API Error:', error.response?.data || error.message);
 
     return res.status(500).json({
-      error: getGeminiErrorMessage(error),
+      error: getAIErrorMessage(error),
     });
   }
 });
@@ -356,10 +348,10 @@ app.post('/quiz', async (req, res) => {
 
     return res.json({ quiz });
   } catch (error) {
-    console.error('Gemini Quiz Error:', error.response?.data || error.message);
+    console.error('AI Quiz Error:', error.response?.data || error.message);
 
     return res.status(500).json({
-      error: getGeminiErrorMessage(error),
+      error: getAIErrorMessage(error),
     });
   }
 });
