@@ -1,6 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link } from 'expo-router';
+import { type Href, router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppCard, ScreenScroll, appStyles } from '@/components/ui/app-primitives';
@@ -12,7 +12,7 @@ type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
 type QuickAction = {
   title: string;
   subtitle: string;
-  href: React.ComponentProps<typeof Link>['href'];
+  href: Href;
   accent: string;
   icon: MaterialIconName;
 };
@@ -96,15 +96,15 @@ export default function DashboardScreen() {
             Move from question to explanation, practice, and revision without losing focus.
           </ThemedText>
 
-          <Link href="/(tabs)" asChild>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Start tutor session"
-              style={({ pressed }) => [styles.heroCta, pressed && styles.pressed]}>
-              <ThemedText style={styles.heroCtaText}>Start tutor session</ThemedText>
-              <MaterialIcons name="arrow-forward" size={18} color={Design.color.primary} />
-            </Pressable>
-          </Link>
+          {/* router.push instead of <Link asChild>: Link drops function styles in expo-router 58. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Start tutor session"
+            onPress={() => router.push('/(tabs)')}
+            style={({ pressed }) => [styles.heroCta, pressed && styles.pressed]}>
+            <ThemedText style={styles.heroCtaText}>Start tutor session</ThemedText>
+            <MaterialIcons name="arrow-forward" size={18} color={Design.color.primary} />
+          </Pressable>
 
           <View style={styles.heroStats}>
             <View style={styles.heroStat}>
@@ -135,26 +135,26 @@ export default function DashboardScreen() {
 
         <View style={styles.tileGrid}>
           {quickActions.map((action) => (
-            <Link key={action.title} href={action.href} asChild>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Open ${action.title}`}
-                style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
-                <View style={[styles.tileIcon, { backgroundColor: `${action.accent}18` }]}>
-                  <MaterialIcons name={action.icon} size={22} color={action.accent} />
-                </View>
-                <ThemedText type="defaultSemiBold" style={styles.tileTitle}>
-                  {action.title}
-                </ThemedText>
-                <ThemedText style={styles.tileSubtitle} numberOfLines={2}>
-                  {action.subtitle}
-                </ThemedText>
-                <View style={styles.tileFooter}>
-                  <ThemedText style={[styles.tileCta, { color: action.accent }]}>Open</ThemedText>
-                  <MaterialIcons name="arrow-forward" size={14} color={action.accent} />
-                </View>
-              </Pressable>
-            </Link>
+            <Pressable
+              key={action.title}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${action.title}`}
+              onPress={() => router.push(action.href)}
+              style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
+              <View style={[styles.tileIcon, { backgroundColor: `${action.accent}18` }]}>
+                <MaterialIcons name={action.icon} size={22} color={action.accent} />
+              </View>
+              <ThemedText type="defaultSemiBold" style={styles.tileTitle}>
+                {action.title}
+              </ThemedText>
+              <ThemedText style={styles.tileSubtitle} numberOfLines={2}>
+                {action.subtitle}
+              </ThemedText>
+              <View style={styles.tileFooter}>
+                <ThemedText style={[styles.tileCta, { color: action.accent }]}>Open</ThemedText>
+                <MaterialIcons name="arrow-forward" size={14} color={action.accent} />
+              </View>
+            </Pressable>
           ))}
         </View>
       </View>

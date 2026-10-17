@@ -13,6 +13,7 @@ import {
   ListRenderItem,
   Platform,
   Pressable,
+  ScaledSize,
   StyleSheet,
   Text,
   TextInput,
@@ -85,7 +86,7 @@ function useResponsiveWidth() {
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
 
   useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+    const subscription = Dimensions.addEventListener('change', ({ window }: { window: ScaledSize }) => {
       setScreenWidth(window.width);
     });
 
@@ -102,7 +103,7 @@ const MessageBubble = memo(function MessageBubble({
   item: Message;
   contentWidth: number;
 }) {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [fadeAnim] = useState(() => new Animated.Value(0));
   const isUserMessage = item.type === MESSAGE_TYPES.USER;
   const bubbleMaxWidth =
     contentWidth * (isUserMessage ? USER_BUBBLE_MAX_RATIO : AI_BUBBLE_MAX_RATIO);
@@ -175,11 +176,12 @@ export default function TutorScreen() {
     [messages],
   );
 
-  // "Clear chat history" in Profile → Privacy.
-  useEffect(() => {
-    if (chatResetCount === 0) return;
+  // "Clear chat history" in Profile → Privacy: reset when the counter changes.
+  const [seenResetCount, setSeenResetCount] = useState(chatResetCount);
+  if (chatResetCount !== seenResetCount) {
+    setSeenResetCount(chatResetCount);
     setMessages([createMessage(MESSAGE_TYPES.AI, WELCOME_TEXT)]);
-  }, [chatResetCount]);
+  }
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -240,7 +242,9 @@ export default function TutorScreen() {
 
   // Prompts tapped in the Guide arrive as ?prompt=…; send once, then clear the param.
   const sendMessageRef = useRef(handleSendMessage);
-  sendMessageRef.current = handleSendMessage;
+  useEffect(() => {
+    sendMessageRef.current = handleSendMessage;
+  });
 
   useEffect(() => {
     if (!incomingPrompt || isLoading) return;

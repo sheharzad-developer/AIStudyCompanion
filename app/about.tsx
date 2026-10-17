@@ -2,7 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Animated, Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppCard, ScreenScroll, appStyles } from '@/components/ui/app-primitives';
@@ -115,7 +115,7 @@ const ROADMAP: readonly { title: string; body: string; icon: MaterialIconName }[
 
 export default function AboutScreen() {
   const [mode, setMode] = useState<ComparisonMode>('companion');
-  const fade = useRef(new Animated.Value(1)).current;
+  const [fade] = useState(() => new Animated.Value(1));
 
   const switchMode = (next: ComparisonMode) => {
     if (next === mode) return;

@@ -5,10 +5,14 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Design } from '@/constants/theme';
 
+// Start the tab navigator on Home (expo-router 58 replaced the initialRouteName prop).
+export const unstable_settings = {
+  anchor: 'dashboard',
+};
+
 export default function TabLayout() {
   return (
     <Tabs
-      initialRouteName="dashboard"
       screenOptions={{
         tabBarActiveTintColor: Design.color.primary,
         tabBarInactiveTintColor: Design.color.subtle,

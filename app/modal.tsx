@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { AppCard, AppButton } from '@/components/ui/app-primitives';
@@ -19,9 +19,7 @@ export default function ModalScreen() {
           Pick one topic, ask for a short explanation, then turn the answer into a quiz while it is
           still fresh.
         </ThemedText>
-        <Link href="/" dismissTo asChild>
-          <AppButton>Start with the tutor</AppButton>
-        </Link>
+        <AppButton onPress={() => router.dismissTo('/')}>Start with the tutor</AppButton>
       </AppCard>
     </View>
   );

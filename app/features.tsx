@@ -157,7 +157,9 @@ function StatusPill({ status }: { status: ApiStatus }) {
 function Typewriter({ text, style, onDone }: { text: string; style: object; onDone: () => void }) {
   const [shown, setShown] = useState(0);
   const onDoneRef = useRef(onDone);
-  onDoneRef.current = onDone;
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  });
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -177,7 +179,7 @@ export default function FeaturesScreen() {
   const [apiStatus, setApiStatus] = useState<ApiStatus>('checking');
   const [selectedKey, setSelectedKey] = useState<FeatureKey>('tutor');
   const [results, setResults] = useState<Partial<Record<FeatureKey, DemoResult>>>({});
-  const showcaseAnim = useRef(new Animated.Value(1)).current;
+  const [showcaseAnim] = useState(() => new Animated.Value(1));
 
   const selected = FEATURES.find((feature) => feature.key === selectedKey) ?? FEATURES[0];
   const result = results[selected.key];
